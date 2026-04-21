@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Prop-Payout Protector", page_icon="🛡️", layout="wide")
 
-# --- MÉMOIRE & SÉCURITÉ ---
+# --- MÉMOIRE POUR LA VERSION GRATUITE ---
 if 'comptes_analyses' not in st.session_state:
     st.session_state.comptes_analyses = set()
 
@@ -14,11 +14,8 @@ LANGUAGES = {
         "title": "🛡️ Prop-Payout Protector",
         "trust": "🔒 Données cryptées localement • Mis à jour : Avril 2026",
         "config": "⚙️ Configuration",
-        "license_label": "Code PRO (Reçu par email)",
+        "license_label": "Code PRO (Reçu après achat)",
         "select_firm": "Ta Prop Firm",
-        "solde_man": "Solde simulé ($)",
-        "gain_man": "Plus gros gain journalier ($)",
-        "jours_man": "Jours validés",
         "tab_auto": "📊 Audit Auto (CSV)",
         "tab_sim": "🎛️ Simulation Manuelle",
         "tab_pro": "👑 Version PRO (-60%)",
@@ -32,17 +29,18 @@ LANGUAGES = {
         "promo_text": "OFFRE DE LANCEMENT",
         "buy_btn": "🔥 DEVENIR PRO (8.99$)",
         "limit_title": "✨ Limite version gratuite",
-        "limit_desc": "Analyse de 1 compte réussie ! Pour débloquer l'accès illimité (Multi-Accounts), passe à la version PRO."
+        "limit_desc": "Premier compte analysé avec succès ! Pour débloquer l'accès illimité (Multi-Accounts), passe à la version PRO.",
+        "support": "📩 Besoin d'aide / Code non reçu ?",
+        "solde_man": "Solde simulé ($)",
+        "gain_man": "Plus gros gain journalier ($)",
+        "jours_man": "Jours validés"
     },
     "English": {
         "title": "🛡️ Prop-Payout Protector",
         "trust": "🔒 Local encryption • Updated: April 2026",
         "config": "⚙️ Settings",
-        "license_label": "PRO License Key",
+        "license_label": "PRO License Key (After purchase)",
         "select_firm": "Select Prop Firm",
-        "solde_man": "Simulated Balance ($)",
-        "gain_man": "Best Day Profit ($)",
-        "jours_man": "Validated Days",
         "tab_auto": "📊 Auto Audit (CSV)",
         "tab_sim": "🎛️ Manual Simulation",
         "tab_pro": "👑 PRO Version (-60%)",
@@ -56,11 +54,15 @@ LANGUAGES = {
         "promo_text": "LAUNCH OFFER",
         "buy_btn": "🔥 UPGRADE TO PRO (8.99$)",
         "limit_title": "✨ Free tier limit",
-        "limit_desc": "First account analyzed! To unlock unlimited Multi-Account analysis, upgrade to PRO."
+        "limit_desc": "First account analyzed! To unlock unlimited Multi-Account analysis, upgrade to PRO.",
+        "support": "📩 Need help / Code not received?",
+        "solde_man": "Simulated Balance ($)",
+        "gain_man": "Best Day Profit ($)",
+        "jours_man": "Validated Days"
     }
 }
 
-# --- BARRE LATÉRALE ---
+# --- BARRE LATÉRALE (SIDEBAR) ---
 lang_choice = st.sidebar.selectbox("🌐 Language", ["Français", "English"])
 t = LANGUAGES[lang_choice]
 
@@ -68,7 +70,25 @@ st.sidebar.divider()
 license_key = st.sidebar.text_input(t["license_label"], type="password")
 is_pro = (license_key == "PAYOUT-MASTER-2026")
 
-# --- DESIGN ---
+with st.sidebar:
+    st.header(t["config"])
+    prop_firm = st.selectbox(t["select_firm"], ["Apex Legacy (50k)", "LucidFlex (50k)"])
+    
+    if prop_firm == "Apex Legacy (50k)":
+        seuil, ratio_lim, req_jours, min_p = 52600, 0.30, 10, 0.01
+    else:
+        seuil, ratio_lim, req_jours, min_p = 50500, 1.0, 5, 150.0
+
+    # Section Support
+    st.markdown(f"""
+    <div style="color: #555; font-size: 0.8em; text-align: center; margin-top: 50px;">
+        <hr style="border-color: #222;">
+        {t['support']}<br>
+        <b style="color: #888;">proppayoutprotector@gmail.com</b>
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- DESIGN CUSTOM (CSS) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #000000; }
@@ -83,15 +103,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title(t["title"])
-st.markdown(f"<div style='color: #444; text-align: center;'>{t['trust']}</div>", unsafe_allow_html=True)
-
-with st.sidebar:
-    st.header(t["config"])
-    prop_firm = st.selectbox(t["select_firm"], ["Apex Legacy (50k)", "LucidFlex (50k)"])
-    if prop_firm == "Apex Legacy (50k)":
-        seuil, ratio_lim, req_jours, min_p = 52600, 0.30, 10, 0.01
-    else:
-        seuil, ratio_lim, req_jours, min_p = 50500, 1.0, 5, 150.0
+st.markdown(f"<div style='color: #444; text-align: center; margin-bottom: 20px;'>{t['trust']}</div>", unsafe_allow_html=True)
 
 # --- NAVIGATION ---
 if is_pro:
@@ -99,18 +111,25 @@ if is_pro:
 else:
     tabs = st.tabs([t["tab_auto"], t["tab_sim"], t["tab_pro"]])
 
-# --- ONGLET 1 : AUTO ---
+# --- ONGLET 1 : AUDIT AUTO ---
 with tabs[0]:
     fichier_csv = st.file_uploader(f"📁 Import CSV", type=["csv"])
     if fichier_csv:
+        # Logique de limitation
         if not is_pro and fichier_csv.name not in st.session_state.comptes_analyses:
             if len(st.session_state.comptes_analyses) >= 1:
-                st.markdown(f"<div class='limit-box'><div style='color:#FFD700;font-size:1.5em;'>{t['limit_title']}</div><p>{t['limit_desc']}</p></div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class='limit-box'>
+                    <div style='color:#FFD700; font-size:1.5em;'>{t['limit_title']}</div>
+                    <p style='color:white;'>{t['limit_desc']}</p>
+                </div>
+                """, unsafe_allow_html=True)
                 st.link_button(t["buy_btn"], "https://buy.stripe.com/28E7sF4LycwD34Vgr7co000", use_container_width=True, type="primary")
                 st.stop()
             else:
                 st.session_state.comptes_analyses.add(fichier_csv.name)
         
+        # Traitement du fichier
         df = pd.read_csv(fichier_csv)
         col_profit = [c for c in df.columns if 'profit' in c.lower() or 'pnl' in c.lower()][0]
         pnl_total = df[col_profit].sum()
@@ -122,6 +141,7 @@ with tabs[0]:
         c1, c2, c3 = st.columns(3)
         c1.metric(t["solde_est"], f"{balance:,.2f} $")
         c2.metric(t["jours_val"], f"{days_count} / {req_jours}")
+        
         if prop_firm == "Apex Legacy (50k)":
             ratio = best_day / pnl_total if pnl_total > 0 else 0
             c3.metric(t["consist"], f"{ratio:.1%}", t["danger"] if ratio > ratio_lim else t["safe"], delta_color="inverse")
@@ -129,19 +149,24 @@ with tabs[0]:
             payout = min(pnl_total * 0.5, 2000.0) if pnl_total > 0 else 0
             c3.metric(t["avail"], f"{payout:,.2f} $")
 
-# --- ONGLET 2 : SIMU ---
+# --- ONGLET 2 : SIMULATION ---
 with tabs[1]:
     st.write(f"### {t['tab_sim']}")
     col_s1, col_s2, col_s3 = st.columns(3)
     with col_s1: mb = st.number_input(t["solde_man"], value=51200.0)
     with col_s2: md = st.number_input(t["jours_man"], value=3)
-    with col_s3: mbd = st.number_input(t["gain_man"], value=800.0) if prop_firm == "Apex Legacy (50k)" else 0
+    with col_s3: 
+        if prop_firm == "Apex Legacy (50k)":
+            mbd = st.number_input(t["gain_man"], value=800.0)
+        else:
+            mbd = 0
     
     st.divider()
     mpnl = mb - 50000
     cm1, cm2, cm3 = st.columns(3)
     cm1.metric(t["solde_est"], f"{mb:,.2f} $")
     cm2.metric(t["jours_val"], f"{md} / {req_jours}")
+    
     if prop_firm == "Apex Legacy (50k)":
         mr = mbd / mpnl if mpnl > 0 else 0
         cm3.metric(t["consist"], f"{mr:.1%}", t["danger"] if mr > ratio_lim else t["safe"], delta_color="inverse")
@@ -149,22 +174,23 @@ with tabs[1]:
         ma = min(mpnl * 0.5, 2000.0) if mpnl > 0 else 0
         cm3.metric(t["avail"], f"{ma:,.2f} $")
 
-# --- ONGLET 3 : PRO ---
+# --- ONGLET 3 : VERSION PRO ---
 if not is_pro:
     with tabs[2]:
         st.markdown(f"""
         <div class='premium-card'>
             <span class='offer-badge'>{t['promo_text']}</span>
-            <h2 style='color:white;'>Prop-Payout Protector PRO</h2>
+            <h2 style='color:white; margin-top:15px;'>Prop-Payout Protector PRO</h2>
             <div style='margin: 20px 0;'>
                 <span class='promo-price'>22.99 $</span><br>
                 <span class='final-price'>8.99 $</span>
             </div>
-            <ul style='text-align: left; display: inline-block; color: #ddd;'>
-                <li>✅ Multi-Account Analysis (Unlimited)</li>
-                <li>✅ Deep Consistency Audit</li>
-                <li>✅ Lifetime Access</li>
-            </ul>
+            <div style='text-align: left; display: inline-block; color: #ddd; margin-bottom: 20px;'>
+                ✅ <b>Multi-Account</b> (Unlimited CSV Analysis)<br>
+                ✅ <b>No more limits</b> on Simulation tool<br>
+                ✅ <b>Lifetime Access</b> (No subscription)<br>
+                ✅ <b>Priority Support</b>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         st.write("")
