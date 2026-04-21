@@ -1,195 +1,129 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
-# --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="Prop-Payout Protector", page_icon="🛡️", layout="wide")
+# --- CONFIGURATION ---
+st.set_page_config(page_title="ZenJournal | Minimalist Trading Log", page_icon="📈", layout="wide")
 
-# --- MÉMOIRE POUR LA VERSION GRATUITE ---
-if 'comptes_analyses' not in st.session_state:
-    st.session_state.comptes_analyses = set()
+# --- MÉMOIRE ---
+if 'history' not in st.session_state:
+    st.session_state.history = None
 
-# --- SYSTÈME DE TRADUCTION ---
-LANGUAGES = {
+# --- TRADUCTIONS ---
+LANG = {
     "Français": {
-        "title": "🛡️ Prop-Payout Protector",
-        "trust": "🔒 Données cryptées localement • Mis à jour : Avril 2026",
-        "config": "⚙️ Configuration",
-        "license_label": "Code PRO (Reçu après achat)",
-        "select_firm": "Ta Prop Firm",
-        "tab_auto": "📊 Audit Auto (CSV)",
-        "tab_sim": "🎛️ Simulation Manuelle",
-        "tab_pro": "👑 Version PRO (-60%)",
-        "audit_res": "📈 Résultat de l'Audit",
-        "solde_est": "Solde Estimé",
-        "jours_val": "Jours Validés",
-        "consist": "Consistance (Max 30%)",
-        "avail": "Disponible au retrait",
-        "safe": "✅ CONFORME",
-        "danger": "🚨 DANGER",
-        "promo_text": "OFFRE DE LANCEMENT",
-        "buy_btn": "🔥 DEVENIR PRO (8.99$)",
-        "limit_title": "✨ Limite version gratuite",
-        "limit_desc": "Premier compte analysé avec succès ! Pour débloquer l'accès illimité (Multi-Accounts), passe à la version PRO.",
-        "support": "📩 Besoin d'aide / Code non reçu ?",
-        "solde_man": "Solde simulé ($)",
-        "gain_man": "Plus gros gain journalier ($)",
-        "jours_man": "Jours validés"
+        "title": "📈 ZenJournal",
+        "subtitle": "L'alternative minimaliste aux abonnements coûteux.",
+        "license": "Code d'activation PRO",
+        "support": "📩 Support : proppayoutprotector@gmail.com",
+        "drop": "Glisse ton CSV Tradovate / Rithmic ici",
+        "stat_profit": "Profit Net",
+        "stat_winrate": "Win Rate",
+        "stat_trades": "Total Trades",
+        "stat_factor": "Profit Factor",
+        "chart_title": "Courbe d'Équité (Performance)",
+        "pro_title": "👑 Passe en ZenJournal PRO",
+        "pro_desc": "Marre de payer 30$/mois ? Débloque l'import illimité pour toujours.",
+        "buy_btn": "🔥 ACCÈS À VIE (8.99$)",
+        "limit_msg": "✨ Version gratuite : 1 import réussi. Passe en PRO pour gérer ton journal quotidiennement."
     },
     "English": {
-        "title": "🛡️ Prop-Payout Protector",
-        "trust": "🔒 Local encryption • Updated: April 2026",
-        "config": "⚙️ Settings",
-        "license_label": "PRO License Key (After purchase)",
-        "select_firm": "Select Prop Firm",
-        "tab_auto": "📊 Auto Audit (CSV)",
-        "tab_sim": "🎛️ Manual Simulation",
-        "tab_pro": "👑 PRO Version (-60%)",
-        "audit_res": "📈 Audit Results",
-        "solde_est": "Estimated Balance",
-        "jours_val": "Validated Days",
-        "consist": "Consistency (Max 30%)",
-        "avail": "Available for Payout",
-        "safe": "✅ COMPLIANT",
-        "danger": "🚨 DANGER",
-        "promo_text": "LAUNCH OFFER",
-        "buy_btn": "🔥 UPGRADE TO PRO (8.99$)",
-        "limit_title": "✨ Free tier limit",
-        "limit_desc": "First account analyzed! To unlock unlimited Multi-Account analysis, upgrade to PRO.",
-        "support": "📩 Need help / Code not received?",
-        "solde_man": "Simulated Balance ($)",
-        "gain_man": "Best Day Profit ($)",
-        "jours_man": "Validated Days"
+        "title": "📈 ZenJournal",
+        "subtitle": "The minimalist alternative to expensive subscriptions.",
+        "license": "PRO Activation Code",
+        "support": "📩 Support: proppayoutprotector@gmail.com",
+        "drop": "Drop your Tradovate / Rithmic CSV here",
+        "stat_profit": "Net Profit",
+        "stat_winrate": "Win Rate",
+        "stat_trades": "Total Trades",
+        "stat_factor": "Profit Factor",
+        "chart_title": "Equity Curve (Performance)",
+        "pro_title": "👑 Upgrade to ZenJournal PRO",
+        "pro_desc": "Tired of $30/month subscriptions? Unlock unlimited imports forever.",
+        "buy_btn": "🔥 LIFETIME ACCESS ($8.99)",
+        "limit_msg": "✨ Free tier: 1 import successful. Upgrade to PRO to journal your trades daily."
     }
 }
 
-# --- BARRE LATÉRALE (SIDEBAR) ---
-lang_choice = st.sidebar.selectbox("🌐 Language", ["Français", "English"])
-t = LANGUAGES[lang_choice]
+# --- SIDEBAR ---
+lang = st.sidebar.selectbox("🌐 Language", ["English", "Français"])
+t = LANG[lang]
 
 st.sidebar.divider()
-license_key = st.sidebar.text_input(t["license_label"], type="password")
+license_key = st.sidebar.text_input(t["license"], type="password")
 is_pro = (license_key == "PAYOUT-MASTER-2026")
 
-with st.sidebar:
-    st.header(t["config"])
-    prop_firm = st.selectbox(t["select_firm"], ["Apex Legacy (50k)", "LucidFlex (50k)"])
-    
-    if prop_firm == "Apex Legacy (50k)":
-        seuil, ratio_lim, req_jours, min_p = 52600, 0.30, 10, 0.01
-    else:
-        seuil, ratio_lim, req_jours, min_p = 50500, 1.0, 5, 150.0
+st.sidebar.markdown(f"<div style='font-size:0.8em; color:gray; margin-top:100px;'>{t['support']}</div>", unsafe_allow_html=True)
 
-    # Section Support
-    st.markdown(f"""
-    <div style="color: #555; font-size: 0.8em; text-align: center; margin-top: 50px;">
-        <hr style="border-color: #222;">
-        {t['support']}<br>
-        <b style="color: #888;">proppayoutprotector@gmail.com</b>
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- DESIGN CUSTOM (CSS) ---
+# --- STYLE CSS ---
 st.markdown("""
     <style>
-    [data-testid="stAppViewContainer"] { background-color: #000000; }
-    [data-testid="stSidebar"] { background-color: #080808; border-right: 1px solid #222; }
-    .stMetric { background-color: #0f0f0f; border: 1px solid #222222; border-radius: 10px; padding: 15px; }
-    .promo-price { color: #8B949E; text-decoration: line-through; font-size: 1.2em; }
-    .final-price { color: #00C805; font-size: 2.5em; font-weight: bold; }
-    .offer-badge { background-color: #FFD700; color: black; padding: 5px 10px; border-radius: 5px; font-weight: bold; }
-    .premium-card { border: 1px solid #FFD700; padding: 30px; border-radius: 15px; background: linear-gradient(145deg, #0f0f0f, #1a1a1a); text-align: center; }
-    .limit-box { border: 1px solid #FFD700; padding: 25px; border-radius: 10px; background: #0a0a0a; text-align: center; margin-top: 20px;}
+    [data-testid="stAppViewContainer"] { background-color: #050505; }
+    .stMetric { background-color: #111; border: 1px solid #222; border-radius: 10px; padding: 15px; }
+    .premium-card { border: 1px solid #00C805; padding: 30px; border-radius: 15px; background: linear-gradient(145deg, #0a0a0a, #111); text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
+# --- MAIN UI ---
 st.title(t["title"])
-st.markdown(f"<div style='color: #444; text-align: center; margin-bottom: 20px;'>{t['trust']}</div>", unsafe_allow_html=True)
+st.markdown(f"<p style='color:gray;'>{t['subtitle']}</p>", unsafe_allow_html=True)
 
-# --- NAVIGATION ---
-if is_pro:
-    tabs = st.tabs([t["tab_auto"], t["tab_sim"]])
-else:
-    tabs = st.tabs([t["tab_auto"], t["tab_sim"], t["tab_pro"]])
-
-# --- ONGLET 1 : AUDIT AUTO ---
-with tabs[0]:
-    fichier_csv = st.file_uploader(f"📁 Import CSV", type=["csv"])
-    if fichier_csv:
-        # Logique de limitation
-        if not is_pro and fichier_csv.name not in st.session_state.comptes_analyses:
-            if len(st.session_state.comptes_analyses) >= 1:
-                st.markdown(f"""
-                <div class='limit-box'>
-                    <div style='color:#FFD700; font-size:1.5em;'>{t['limit_title']}</div>
-                    <p style='color:white;'>{t['limit_desc']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.link_button(t["buy_btn"], "https://buy.stripe.com/28E7sF4LycwD34Vgr7co000", use_container_width=True, type="primary")
-                st.stop()
-            else:
-                st.session_state.comptes_analyses.add(fichier_csv.name)
-        
-        # Traitement du fichier
-        df = pd.read_csv(fichier_csv)
-        col_profit = [c for c in df.columns if 'profit' in c.lower() or 'pnl' in c.lower()][0]
-        pnl_total = df[col_profit].sum()
-        balance = 50000 + pnl_total
-        best_day = df[col_profit].max()
-        days_count = len(df[df[col_profit] >= min_p])
-        
-        st.write(f"### {t['audit_res']}")
-        c1, c2, c3 = st.columns(3)
-        c1.metric(t["solde_est"], f"{balance:,.2f} $")
-        c2.metric(t["jours_val"], f"{days_count} / {req_jours}")
-        
-        if prop_firm == "Apex Legacy (50k)":
-            ratio = best_day / pnl_total if pnl_total > 0 else 0
-            c3.metric(t["consist"], f"{ratio:.1%}", t["danger"] if ratio > ratio_lim else t["safe"], delta_color="inverse")
-        else:
-            payout = min(pnl_total * 0.5, 2000.0) if pnl_total > 0 else 0
-            c3.metric(t["avail"], f"{payout:,.2f} $")
-
-# --- ONGLET 2 : SIMULATION ---
-with tabs[1]:
-    st.write(f"### {t['tab_sim']}")
-    col_s1, col_s2, col_s3 = st.columns(3)
-    with col_s1: mb = st.number_input(t["solde_man"], value=51200.0)
-    with col_s2: md = st.number_input(t["jours_man"], value=3)
-    with col_s3: 
-        if prop_firm == "Apex Legacy (50k)":
-            mbd = st.number_input(t["gain_man"], value=800.0)
-        else:
-            mbd = 0
-    
-    st.divider()
-    mpnl = mb - 50000
-    cm1, cm2, cm3 = st.columns(3)
-    cm1.metric(t["solde_est"], f"{mb:,.2f} $")
-    cm2.metric(t["jours_val"], f"{md} / {req_jours}")
-    
-    if prop_firm == "Apex Legacy (50k)":
-        mr = mbd / mpnl if mpnl > 0 else 0
-        cm3.metric(t["consist"], f"{mr:.1%}", t["danger"] if mr > ratio_lim else t["safe"], delta_color="inverse")
-    else:
-        ma = min(mpnl * 0.5, 2000.0) if mpnl > 0 else 0
-        cm3.metric(t["avail"], f"{ma:,.2f} $")
-
-# --- ONGLET 3 : VERSION PRO ---
 if not is_pro:
-    with tabs[2]:
+    tab1, tab2 = st.tabs(["📊 Dashboard", t["pro_title"]])
+else:
+    tab1 = st.tabs(["📊 Dashboard"])[0]
+
+with tab1:
+    uploaded_file = st.file_uploader(t["drop"], type="csv")
+    
+    if uploaded_file:
+        # Check Limits for Free Users
+        if not is_pro:
+            if 'last_file' in st.session_state and st.session_state.last_file != uploaded_file.name:
+                st.warning(t["limit_msg"])
+                st.link_button(t["buy_btn"], "https://buy.stripe.com/28E7sF4LycwD34Vgr7co000", type="primary")
+                st.stop()
+            st.session_state.last_file = uploaded_file.name
+
+        # Process Data
+        df = pd.read_csv(uploaded_file)
+        col_profit = [c for c in df.columns if 'profit' in c.lower() or 'pnl' in c.lower()][0]
+        
+        # Stats
+        total_pnl = df[col_profit].sum()
+        wins = df[df[col_profit] > 0][col_profit]
+        losses = df[df[col_profit] < 0][col_profit]
+        win_rate = (len(wins) / len(df)) * 100 if len(df) > 0 else 0
+        profit_factor = abs(wins.sum() / losses.sum()) if losses.sum() != 0 else 0
+        
+        # Metrics Row
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric(t["stat_profit"], f"{total_pnl:,.2f} $", delta=None)
+        c2.metric(t["stat_winrate"], f"{win_rate:.1f}%")
+        c3.metric(t["stat_trades"], len(df))
+        c4.metric(t["stat_factor"], f"{profit_factor:.2f}")
+        
+        # Equity Curve
+        st.subheader(t["chart_title"])
+        df['equity'] = df[col_profit].cumsum()
+        st.area_chart(df['equity'], color="#00C805")
+
+# --- PRO TAB ---
+if not is_pro:
+    with tab2:
         st.markdown(f"""
         <div class='premium-card'>
-            <span class='offer-badge'>{t['promo_text']}</span>
-            <h2 style='color:white; margin-top:15px;'>Prop-Payout Protector PRO</h2>
+            <h2 style='color:white;'>ZenJournal PRO</h2>
+            <p style='color:#888;'>Stop paying monthly for your data.</p>
             <div style='margin: 20px 0;'>
-                <span class='promo-price'>22.99 $</span><br>
-                <span class='final-price'>8.99 $</span>
+                <span style='font-size: 2.5em; font-weight: bold; color: #00C805;'>$8.99</span>
+                <span style='color: gray;'> / lifetime</span>
             </div>
             <div style='text-align: left; display: inline-block; color: #ddd; margin-bottom: 20px;'>
-                ✅ <b>Multi-Account</b> (Unlimited CSV Analysis)<br>
-                ✅ <b>No more limits</b> on Simulation tool<br>
-                ✅ <b>Lifetime Access</b> (No subscription)<br>
-                ✅ <b>Priority Support</b>
+                ✅ <b>Unlimited</b> CSV Imports<br>
+                ✅ <b>Detailed</b> Performance Metrics<br>
+                ✅ <b>Priority</b> Email Support<br>
+                ✅ <b>Zero</b> Monthly Fees
             </div>
         </div>
         """, unsafe_allow_html=True)
